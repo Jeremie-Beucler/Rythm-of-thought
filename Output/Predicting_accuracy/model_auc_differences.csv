@@ -1,0 +1,4 @@
+"comparison","auc_difference","difference_low","difference_high","n_boot_valid"
+"full model minus without control",0.060392482034273,0.025737608858978,0.092572040986944,2000
+"full model minus trajectory only",0.15685461580984,0.0715842128953134,0.244097879797848,2000
+"full model minus length only",0.37260038192874,0.270475160418308,0.464868854254894,2000

@@ -1,0 +1,6 @@
+"model","design","alpha","lambda","auc","auc_low","auc_high","n_subjects","n_items","n_trials","n_cells","n_boot_valid"
+"whole trial","five participant folds crossed with leave-one-item-out",1,0.0132194114846603,0.812980551786522,0.73106789479661,0.888124896176714,76,10,565,50,2000
+"0-25%","five participant folds crossed with leave-one-item-out",0,5.72236765935022e-05,0.502668981928098,0.419105229208642,0.599665516774892,75,10,432,50,2000
+"25-50%","five participant folds crossed with leave-one-item-out",0,0.0613590727341317,0.59341308937368,0.484277697908265,0.702397915928613,74,10,378,50,2000
+"50-75%","five participant folds crossed with leave-one-item-out",0.4,0.0464158883361278,0.699499374217772,0.589252257106348,0.798760338082313,71,10,358,50,2000
+"75-100%","five participant folds crossed with leave-one-item-out",1,0.0151991108295293,0.741084980206231,0.653850339518725,0.828719253716868,75,10,506,50,2000

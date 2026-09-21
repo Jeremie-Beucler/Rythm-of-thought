@@ -1,0 +1,5 @@
+"model","design","alpha","lambda","auc","auc_low","auc_high","n_subjects","n_items","n_trials","n_cells","n_boot_valid"
+"full model","five participant folds crossed with leave-one-item-out",1,0.0132194114846603,0.812980551786522,0.73106789479661,0.888124896176714,76,10,565,50,2000
+"without control","five participant folds crossed with leave-one-item-out",1,0.0200923300256505,0.752588069752249,0.665860904485981,0.831308261083967,76,10,565,50,2000
+"trajectory only","five participant folds crossed with leave-one-item-out",0,0.123284673944207,0.656125935976682,0.576100224259969,0.742592756388285,76,10,565,50,2000
+"length only","five participant folds crossed with leave-one-item-out",0,2.47707635599171e-05,0.440380169857782,0.373860777659717,0.519756775153093,76,10,565,50,2000

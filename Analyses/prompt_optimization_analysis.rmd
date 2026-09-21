@@ -1,0 +1,580 @@
+---
+title: "Deliberation Trajectories - LLM Validation Ratings"
+author: "Jérémie Beucler"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Validation of LLM Ratings
+
+In this document, we check whether LLM ratings align with human ratings collected from 7 raters on 99 chunks across five dimensions (confidence, control, generation, justification, regulation).
+
+Human ratings serve as the gold standard. We can adjust the LLM prompts to better match human judgements, but we shouldn't expect a perfect correlation given the complexity of the task.
+
+
+```{r chunk-1, include=FALSE}
+# Use the project root for data and output paths when knitting from Analyses/.
+project_root <- if (file.exists("Deliberation.Rproj")) "." else ".."
+stopifnot(file.exists(file.path(project_root, "Deliberation.Rproj")))
+knitr::opts_knit$set(root.dir = normalizePath(project_root))
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      fig.width = 7, fig.height = 5)
+```
+
+```{r chunk-2}
+rm(list = ls())
+set.seed(123)
+
+library(tidyverse)
+library(readxl)
+library(irr)
+library(psych)
+library(jtools)
+library(ggpubr)
+library(ggExtra)
+library(knitr)
+library(kableExtra)
+
+measures <- c("Generation", "Justification", "Control", "Regulation", "Confidence")
+
+# output directory for saved plots
+plot_dir <- "./Output/LLM_scoring_validation"
+dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
+
+# pretty-print p-values
+format_p <- function(p) {
+  if (p < .001) return("< .001")
+  return(sprintf("%.3f", p))
+}
+
+# significance stars for correlation matrices
+star_p <- function(p) {
+  case_when(
+    is.na(p) ~ "",
+    p < .001 ~ "***",
+    p < .01  ~ "**",
+    p < .05  ~ "*",
+    TRUE     ~ ""
+  )
+}
+```
+
+```{r chunk-3}
+# load human ratings (two duplicates are averaged)
+validation_ratings_humans <- read_xlsx("./Data/chunk_validation_ratings.xlsx",
+                                       sheet = "chunks_2") %>%
+  mutate(across(matches("^(Control|Generation|Regulation|Justification|Confidence)"),
+                ~ suppressWarnings(as.numeric(.)))) %>%
+  group_by(Chunk_text, Question) %>%
+  summarise(across(everything(),
+                   ~ if (is.numeric(.x)) mean(.x, na.rm = TRUE) else first(.x)),
+            .groups = "drop")
+```
+
+```{r chunk-4}
+# experiment ids and readable labels
+exp_names <- c("unified_v1", "unified_v2", "individual_v1",
+               "unified_gpt_v2", "unified_gpt_v3", "unified_gpt_v4", "unified_gpt_v5",
+               "unified_gpt_v3_low_reasoning",
+               "unified_gpt_v3_medium_reasoning",
+               "unified_gpt_v3_high_reasoning")
+
+exp_labels <- c(
+  unified_v1                      = "Llama – base prompt",
+  unified_v2                      = "Llama – broader Control def.",
+  individual_v1                   = "Llama – one call per function",
+  unified_gpt_v2                  = "GPT – broader Control def.",
+  unified_gpt_v3                  = "GPT – no forced-zero rule",
+  unified_gpt_v4                  = "GPT – partial generation counts",
+  unified_gpt_v5                  = "GPT – with scoring examples",
+  unified_gpt_v3_low_reasoning    = "GPT – low reasoning",
+  unified_gpt_v3_medium_reasoning = "GPT – medium reasoning",
+  unified_gpt_v3_high_reasoning   = "GPT – high reasoning"
+)
+
+# focus experiment for the detailed single-measure plots
+exp_focus <- "unified_gpt_v3_low_reasoning"
+```
+
+```{r chunk-5}
+# helper: average human rater columns for a given measure
+compute_human_avg <- function(df, measure) {
+  human_cols <- df %>%
+    select(starts_with(measure), -matches("_LLM_")) %>%
+    names()
+  df %>%
+    mutate(human_avg = rowMeans(across(all_of(human_cols)), na.rm = TRUE)) %>%
+    pull(human_avg)
+}
+```
+
+```{r chunk-6}
+# load all LLM experiment files and join to human ratings
+llm_dir <- "./Output/Prompt_optimization"
+
+read_llm_exp <- function(exp) {
+  readr::read_csv(file.path(llm_dir, paste0(exp, ".csv")),
+                  show_col_types = FALSE) %>%
+    rename(Chunk_text = response_text, Question = question_text) %>%
+    select(Chunk_text, Question,
+           confidence_mean, control_mean,
+           generation_mean, justification_mean, regulation_mean) %>%
+    rename(Confidence = confidence_mean,
+           Control = control_mean,
+           Generation = generation_mean,
+           Justification = justification_mean,
+           Regulation = regulation_mean) %>%
+    rename_with(~ paste0(.x, "_LLM_", exp), .cols = any_of(measures))
+}
+
+# join all experiments to human data in one pass
+validation_ratings_joined <- exp_names %>%
+  map(read_llm_exp) %>%
+  reduce(left_join, by = c("Chunk_text", "Question")) %>%
+  left_join(validation_ratings_humans, ., by = c("Chunk_text", "Question"))
+```
+
+```{r chunk-7}
+# build the master long dataframe used throughout: human_avg vs llm per measure × experiment
+get_cor_df <- function(measure) {
+  human_avg <- compute_human_avg(validation_ratings_joined, measure)
+  validation_ratings_joined %>%
+    mutate(human_avg = human_avg) %>%
+    select(human_avg, matches(paste0("^", measure, "_LLM_"))) %>%
+    pivot_longer(-human_avg, names_to = "col", values_to = "llm_raw") %>%
+    mutate(Experiment = str_remove(col, paste0("^", measure, "_LLM_")),
+           Measure = measure) %>%
+    filter(Experiment %in% exp_names) %>%
+    drop_na() %>%
+    mutate(Experiment = recode(Experiment, !!!exp_labels),
+           Experiment = factor(Experiment,
+                               levels = unname(exp_labels[exp_names]))) %>%
+    select(Measure, Experiment, human_avg, llm_raw)
+}
+
+cor_long_all <- map_dfr(measures, get_cor_df)
+```
+
+## Inter-Rater Reliability (ICC) among Human Raters
+
+Before comparing LLM ratings to human ratings, we first check how consistent the human raters are with each other. We use the consistency form of the ICC because we care about relative ranking, not absolute values.
+
+```{r chunk-8}
+# compute ICC for each measure
+icc_results <- map_dfr(measures, function(m) {
+  mat <- validation_ratings_joined %>%
+    select(starts_with(m), -matches("_LLM_")) %>%
+    mutate(across(everything(), as.numeric)) %>%
+    drop_na()
+  
+  icc_out <- irr::icc(mat, model = "twoway", type = "consistency", unit = "average")
+  tibble(
+    Measure = m,
+    ICC     = round(icc_out$value, 2),
+    Lower95 = round(icc_out$lbound, 2),
+    Upper95 = round(icc_out$ubound, 2),
+    p_value = format_p(icc_out$p.value)
+  )
+})
+
+icc_results %>%
+  kable(caption = "Inter-rater reliability (ICC, two-way consistency, average measures)",
+        align = "c") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+Confidence is excellent (> .90), while Control is the lowest at 0.74 but still acceptable.
+
+## Correlation between LLMs and Human Raters
+
+We compare each LLM experiment to the averaged human ratings using Spearman correlations. We use Spearman  here because some distributions are not normal.
+
+### Scatter plots with marginal distributions
+
+
+```{r chunk-9, fig.width=6, fig.height=6}
+# scatter + marginal histograms for every experiment × measure
+for (exp in levels(cor_long_all$Experiment)) {
+  exp_df <- cor_long_all %>% filter(Experiment == exp)
+
+  for (m in measures) {
+    plot_df <- filter(exp_df, Measure == m)
+    rho <- cor(plot_df$human_avg, plot_df$llm_raw, method = "spearman")
+
+    p <- ggplot(plot_df, aes(x = human_avg, y = llm_raw)) +
+      geom_abline(slope = 1, intercept = 0,
+                  linetype = "dashed", color = "gray50") +
+      geom_point(alpha = 0.45, size = 2) +
+      geom_smooth(method = "lm", se = FALSE, color = "#E63946", linewidth = 0.8) +
+      annotate("text", x = 8, y = 95,
+               label = sprintf("rho == %.2f", rho), parse = TRUE,
+               size = 4.5, hjust = 0) +
+      coord_fixed(ratio = 1, xlim = c(0, 100), ylim = c(0, 100)) +
+      labs(x = "Average human rating", y = "LLM rating",
+           title = paste0(m, " — ", exp)) +
+      theme_apa()
+
+    print(ggMarginal(p, type = "histogram", fill = "gray80", color = "white", bins = 20))
+    cat("\n\n")
+  }
+}
+```
+
+### Detailed correlations for the focus experiment (`unified_gpt_v3_low_reasoning`)
+
+We zoom in on our focus experiment and plot, for each of the five measures, the scatter of LLM ratings against averaged human ratings, with a GAM smooth and the Spearman correlation reported in APA style. Axes share the same 0–100 scale and a 1:1 reference line is shown for context.
+
+```{r chunk-10, fig.width=16, fig.height=4.2}
+
+focus_label <- exp_labels[[exp_focus]]
+
+# colors for each deliberation function
+function_colors <- c(
+  "Generation"    = "royalblue3",
+  "Justification" = "gold3",
+  "Control"       = "firebrick3",
+  "Regulation"    = "forestgreen",
+  "Confidence"    = "deepskyblue"
+)
+
+# APA-style formatter for the (rho, p) annotation
+apa_corr_label <- function(rho, p) {
+  rho_str <- sprintf("%.2f", abs(rho))
+  rho_str <- sub("^0", "", rho_str)
+
+  if (rho < 0) {
+    rho_str <- paste0("-", rho_str)
+  }
+
+  if (p < .001) {
+    p_str <- "italic(p) < .001"
+  } else {
+    p_formatted <- sub("^0", "", sprintf("%.3f", p))
+    p_str <- sprintf("italic(p) == '%s'", p_formatted)
+  }
+
+  sprintf("italic(rho) == '%s' * ',' ~ %s", rho_str, p_str)
+}
+
+# compute correlations once for both the plots and the table
+correlation_results <- map_dfr(names(function_colors), function(m) {
+  d <- cor_long_all %>%
+    filter(Experiment == focus_label,
+           Measure == m) %>%
+    drop_na(human_avg, llm_raw)
+
+  ct <- psych::corr.test(d$human_avg,
+                         d$llm_raw,
+                         method = "spearman",
+                         adjust = "none")
+
+  tibble(Measure = m,
+         rho = unname(ct$r)[1],
+         Lower95 = unname(ct$ci$lower)[1],
+         Upper95 = unname(ct$ci$upper)[1],
+         p = unname(ct$p)[1])
+})
+
+make_scatter_plot <- function(m, xlab = NULL, ylab = NULL) {
+  d <- cor_long_all %>%
+    filter(Experiment == focus_label,
+           Measure == m) %>%
+    drop_na(human_avg, llm_raw)
+
+  result <- correlation_results %>%
+    filter(Measure == m)
+
+  label_expr <- apa_corr_label(result$rho, result$p)
+
+  ggplot(d, aes(x = human_avg, y = llm_raw)) +
+    geom_abline(slope = 1,
+                intercept = 0,
+                linetype = "dashed",
+                colour = "grey60",
+                linewidth = 0.4) +
+    geom_point(alpha = 0.6,
+               size = 2,
+               colour = function_colors[[m]]) +
+    geom_smooth(method = "lm",
+                se = TRUE,
+                colour = "black",
+                fill = "grey70",
+                alpha = 0.25,
+                linewidth = 0.7) +
+    annotate("text",
+             x = 3,
+             y = 96,
+             hjust = 0,
+             label = label_expr,
+             parse = TRUE,
+             size = 4.5) +
+    coord_fixed(ratio = 1,
+                xlim = c(0, 100),
+                ylim = c(0, 100)) +
+    scale_x_continuous(breaks = seq(0, 100, 25)) +
+    scale_y_continuous(breaks = seq(0, 100, 25)) +
+    labs(x = xlab,
+         y = ylab,
+         title = m) +
+    theme_apa() +
+    theme(plot.title = element_text(hjust = 0.5,
+                                    size = 13,
+                                    face = "bold"),
+          axis.title = element_text(size = 16),
+          axis.text = element_text(size = 13),
+          plot.margin = margin(6, 8, 4, 8))
+}
+
+# y label on leftmost (Generation), x label on middle (Control), none elsewhere
+scatter_plots <- list(
+  make_scatter_plot("Generation", ylab = "LLM rating"),
+  make_scatter_plot("Justification"),
+  make_scatter_plot("Control", xlab = "Average human rating"),
+  make_scatter_plot("Regulation"),
+  make_scatter_plot("Confidence")
+)
+
+scatterplot_LLM_humans_gpt5_1_low <- ggarrange(
+  plotlist = scatter_plots,
+  ncol = 3,
+  nrow = 2,
+  align = "hv"
+)
+
+scatterplot_LLM_humans_gpt5_1_low
+
+ggsave(file.path(plot_dir, "scatterplot_LLM_humans_gpt5_1_low.svg"),
+       scatterplot_LLM_humans_gpt5_1_low,
+       width = 10,
+       height = 8)
+
+correlation_results %>%
+  mutate(`Spearman's ρ [95% CI]` = sprintf("%.2f [%.2f, %.2f]",
+                                           rho,
+                                           Lower95,
+                                           Upper95),
+         p = map_chr(p, format_p)) %>%
+  select(Measure,
+         `Spearman's ρ [95% CI]`,
+         p) %>%
+  kable(caption = "Spearman correlations between average human ratings and LLM ratings.")
+
+```
+
+```{r chunk-11}
+# LLM rating distributions
+cor_long_all %>%
+  filter(Experiment == focus_label) %>%
+  drop_na(llm_raw) %>%
+  mutate(Measure = factor(Measure,
+                          levels = names(function_colors))) %>%
+  ggplot(aes(x = llm_raw, fill = Measure)) +
+  geom_histogram(binwidth = 5,
+                 boundary = 0,
+                 colour = "white",
+                 alpha = 0.8) +
+  facet_wrap(~ Measure) +
+  scale_fill_manual(values = function_colors) +
+  scale_x_continuous(breaks = seq(0, 100, 25),
+                     limits = c(0, 100)) +
+  labs(x = "LLM rating",
+       y = "Count") +
+  theme_apa() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 13, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12))
+
+# Average human rating distributions
+cor_long_all %>%
+  filter(Experiment == focus_label) %>%
+  drop_na(human_avg) %>%
+  mutate(Measure = factor(Measure,
+                          levels = names(function_colors))) %>%
+  ggplot(aes(x = human_avg, fill = Measure)) +
+  geom_histogram(binwidth = 5,
+                 boundary = 0,
+                 colour = "white",
+                 alpha = 0.8) +
+  facet_wrap(~ Measure) +
+  scale_fill_manual(values = function_colors) +
+  scale_x_continuous(breaks = seq(0, 100, 25),
+                     limits = c(0, 100)) +
+  labs(x = "Average human rating",
+       y = "Count") +
+  theme_apa() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 13, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12))
+```
+
+### Spearman coefficients across experiments
+
+The horizontal plot below shows Spearman ρ with bootstrapped 95% CIs for every measure × experiment, sorted by average performance. Experiments are ordered by mean ρ across measures.
+
+```{r chunk-12, fig.width=10, fig.height=8}
+# spearman correlation with bootstrapped CI
+cor_with_ci <- function(x, y, conf_level = 0.95, n_boot = 2000, seed = 123) {
+  df <- tibble(x = x, y = y) %>% drop_na()
+  r <- cor(df$x, df$y, method = "spearman")
+  set.seed(seed)
+  boot_r <- replicate(n_boot, {
+    idx <- sample.int(nrow(df), replace = TRUE)
+    cor(df$x[idx], df$y[idx], method = "spearman")
+  })
+  alpha <- (1 - conf_level) / 2
+  tibble(r = unname(r),
+         conf_low = quantile(boot_r, alpha, na.rm = TRUE),
+         conf_high = quantile(boot_r, 1 - alpha, na.rm = TRUE),
+         n = nrow(df))
+}
+
+# build summary across all measures × experiments
+cor_sum_spearman <- cor_long_all %>%
+  group_by(Measure, Experiment) %>%
+  summarise(tmp = list(cor_with_ci(human_avg, llm_raw)),
+            .groups = "drop") %>%
+  unnest(tmp)
+
+# order experiments by their average rho
+exp_order <- cor_sum_spearman %>%
+  group_by(Experiment) %>%
+  summarise(mean_r = mean(r, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(mean_r)) %>%
+  pull(Experiment)
+
+cor_sum_spearman <- cor_sum_spearman %>%
+  mutate(Experiment = factor(Experiment, levels = exp_order),
+         Measure = factor(Measure, levels = measures))
+
+x_pad <- 0.03
+x_lim <- c(min(cor_sum_spearman$conf_low, na.rm = TRUE) - x_pad - 0.05,
+            max(cor_sum_spearman$conf_high, na.rm = TRUE) + x_pad + 0.05)
+
+p_spearman <- ggplot(cor_sum_spearman, aes(x = r, y = Experiment, color = Experiment)) +
+  geom_point(size = 2) +
+  geom_errorbarh(aes(xmin = conf_low, xmax = conf_high), height = 0.15) +
+  geom_text(aes(label = sprintf("%.2f", r)),
+            vjust = -0.8, size = 3.5, show.legend = FALSE) +
+  facet_wrap(~ Measure, scales = "fixed") +
+  scale_x_continuous(limits = x_lim) +
+  scale_y_discrete(expand = expansion(mult = c(0.05, 0.25))) +
+  labs(x = "Spearman ρ", y = NULL) +
+  theme_apa() +
+  theme(legend.position = "none")
+
+p_spearman
+
+ggsave(file.path(plot_dir, "spearman_coefficients_across_experiments.svg"),
+       p_spearman, width = 10, height = 8)
+```
+
+## Intercorrelation Structure: Humans vs LLMs
+
+Finally, we compare the intercorrelation pattern across constructs for humans and each LLM experiment. If the LLM captures the same latent structure as human raters, the matrices should look similar. We drop Confidence since it is conceptually distinct from the four deliberation functions.
+
+```{r chunk-13, fig.width=14, fig.height=12}
+measures_mat <- setdiff(measures, "Confidence")
+
+# lower-triangle pearson correlation matrix in long format
+cor_mat_long <- function(df_wide, vars, panel_label) {
+  dat <- df_wide %>% select(all_of(vars)) %>% drop_na()
+  idx_tbl <- tibble(var = vars, idx = seq_along(vars))
+
+  crossing(var1 = vars, var2 = vars) %>%
+    mutate(
+      r = map2_dbl(var1, var2, ~ cor(dat[[.x]], dat[[.y]])),
+      p = map2_dbl(var1, var2,
+                   ~ suppressWarnings(cor.test(dat[[.x]], dat[[.y]])$p.value)),
+      stars = star_p(p),
+      panel = panel_label
+    ) %>%
+    left_join(idx_tbl, by = c("var1" = "var")) %>% rename(i = idx) %>%
+    left_join(idx_tbl, by = c("var2" = "var")) %>% rename(j = idx) %>%
+    mutate(across(c(r, p), ~ if_else(j > i, NA_real_, .x)),
+           stars = if_else(j > i, NA_character_, stars)) %>%
+    select(panel, var1, var2, r, p, stars) %>%
+    mutate(var1 = factor(var1, levels = vars),
+           var2 = factor(var2, levels = vars),
+           label = if_else(is.na(r), "",
+                           paste0(sprintf("%.2f", r), stars)))
+}
+
+# human averages in wide format
+human_wide <- map_dfr(measures_mat, function(m) {
+  validation_ratings_joined %>%
+    transmute(Chunk_text, Question, Measure = m,
+              value = compute_human_avg(validation_ratings_joined, m))
+}) %>%
+  pivot_wider(names_from = Measure, values_from = value)
+
+# human panel
+human_cor <- cor_mat_long(human_wide, measures_mat, "Humans")
+
+# one panel per LLM experiment
+llm_cor <- map_dfr(exp_names, function(exp) {
+  llm_cols <- paste0(measures_mat, "_LLM_", exp)
+  llm_wide <- validation_ratings_joined %>%
+    select(Chunk_text, Question, any_of(llm_cols)) %>%
+    rename_with(~ str_replace(.x, paste0("_LLM_", exp, "$"), ""),
+                any_of(llm_cols))
+  cor_mat_long(llm_wide, measures_mat, exp_labels[[exp]])
+})
+
+# combine with humans first, then experiments in order
+panel_levels <- c("Humans", unname(exp_labels[exp_names]))
+plot_long <- bind_rows(human_cor, llm_cor) %>%
+  mutate(panel = factor(panel, levels = panel_levels))
+
+p_intercor <- ggplot(plot_long, aes(x = var2, y = var1, fill = r)) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  geom_text(aes(label = label), size = 3) +
+  facet_wrap(~ panel, ncol = 4, axes = "all") +
+  scale_x_discrete(position = "top") +
+  coord_equal() +
+  scale_fill_gradient2(limits = c(-1, 1),
+                       low = "#2166AC", mid = "white", high = "#B2182B",
+                       na.value = "white") +
+  labs(x = NULL, y = NULL, fill = "r") +
+  theme_apa() +
+  theme(strip.text = element_text(size = 8),
+        axis.text = element_text(size = 7))
+
+p_intercor
+
+ggsave(file.path(plot_dir, "intercorrelation_humans_vs_llms.svg"),
+       p_intercor, width = 14, height = 12)
+```
+
+```{r chunk-14}
+# two-panel version: humans vs the retained configuration
+focus_label <- exp_labels[[exp_focus]]
+two_panel_levels <- c("Humans", focus_label)
+
+plot_long_focus <- plot_long %>%
+  filter(panel %in% two_panel_levels) %>%
+  mutate(panel = factor(panel, levels = two_panel_levels))
+
+p_intercor_focus <- ggplot(plot_long_focus, aes(x = var2, y = var1, fill = r)) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  geom_text(aes(label = label), size = 3.5) +
+  facet_wrap(~ panel, ncol = 2, axes = "all") +
+  scale_x_discrete(position = "bottom") +          # ticks/labels below
+  coord_equal() +
+  scale_fill_gradient2(limits = c(-1, 1),
+                       low = "#2166AC", mid = "white", high = "#B2182B",
+                       na.value = "white") +
+  labs(x = NULL, y = NULL, fill = "r") +
+  theme_apa() +
+  theme(strip.text = element_text(size = 10),
+        axis.text = element_text(size = 9))
+
+p_intercor_focus
+
+ggsave(file.path(plot_dir, "intercorrelation_humans_vs_retained.svg"),
+       p_intercor_focus, width = 8, height = 4.5)
+```
