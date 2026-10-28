@@ -127,6 +127,48 @@ paper_line_legend <- function(title, nrow = 1) {
   )
 }
 
+# figures 2-4 are drawn at print size: the A4 Word text width (16 cm), so text
+# prints at 7.5-8 pt and panel letters at 10 pt without any rescaling
+fig_width_print <- 6.3
+paper_font      <- "Arial"
+
+theme_paper_print <- function(grid_y = FALSE) {
+  theme_classic(base_size = 7.5, base_family = paper_font) %+replace%
+    theme(
+      text = element_text(colour = "#222222", family = paper_font),
+      axis.text = element_text(size = 7.5, colour = "#555555"),
+      axis.title = element_text(size = 8, colour = "#222222"),
+      axis.title.y = element_text(angle = 90, margin = margin(r = 4)),
+      axis.title.x = element_text(margin = margin(t = 3)),
+      axis.line = element_line(linewidth = 0.21, colour = "#222222"),
+      axis.ticks = element_line(linewidth = 0.21, colour = "#222222"),
+      axis.ticks.length = unit(2, "pt"),
+      panel.grid.major.y = if (grid_y) element_line(linewidth = 0.2, colour = "grey90") else element_blank(),
+      strip.background = element_rect(colour = "grey85", fill = "grey97", linewidth = 0.3),
+      strip.text = element_text(size = 8, face = "bold", colour = "#222222",
+                                margin = margin(2.5, 2.5, 2.5, 2.5)),
+      legend.title = element_text(size = 8, face = "bold", hjust = 0.5, margin = margin(b = 2)),
+      legend.title.position = "top",
+      legend.text = element_text(size = 8),
+      legend.key.size = unit(8, "pt"),
+      legend.key.width = unit(14, "pt"),
+      legend.background = element_blank(),
+      legend.key = element_blank(),
+      plot.tag = element_text(size = 10, face = "bold", family = paper_font),
+      plot.tag.position = c(0, 1),
+      plot.margin = margin(6, 6, 4, 6),
+      panel.spacing = unit(8, "pt")
+    )
+}
+
+paper_print_legend <- function(title) {
+  guides(
+    color = guide_legend(title = title,
+                         override.aes = list(linewidth = 0.9, alpha = 1, fill = NA)),
+    fill = "none"
+  )
+}
+
 delib_strip_theme <- theme(strip.text = element_text(face = "bold", size = 12))
 delib_grid_strip_theme <- theme(strip.text.y = element_text(face = "bold", size = 12))
 
@@ -453,9 +495,10 @@ function_colors <- c(
   "Answer Selection" = "orchid2"
 )
 
+# green / rose that stay distinguishable under red-green colour blindness
 response_colors <- c(
-  "Correct"   = "#369644",
-  "Incorrect" = "firebrick3"
+  "Correct"   = "#117733",
+  "Incorrect" = "#EE6677"
 )
 
 # stand-out color for significance bands
@@ -839,10 +882,12 @@ p_traj_rep_ans <- ggplot(
 ) +
   geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci), alpha = 0.3, color = NA) +
   geom_line(linewidth = 1) +
-  scale_color_manual(values = function_colors) +
-  scale_fill_manual(values = function_colors) +
+  scale_color_manual(values = function_colors,
+                     labels = c("Answer Selection" = "Answer selection")) +
+  scale_fill_manual(values = function_colors,
+                    labels = c("Answer Selection" = "Answer selection")) +
   labs(x = "Relative time",
-       y = "Score",
+       y = "Predicted score",
        color = NULL,
        fill = NULL) +
   jtools::theme_apa()
@@ -2293,15 +2338,13 @@ med_chunks <- median(trial_desc$n_chunks, na.rm = TRUE)
 
 p_trial_desc <- ggplot(trial_desc, aes(x = n_chunks)) +
   geom_histogram(binwidth = 1, boundary = 0.5,
-                 fill = "grey88", color = "grey35", linewidth = 0.3) +
+                 fill = "grey72", color = "white", linewidth = 0.25) +
   scale_x_continuous(breaks = function(x) seq(2, ceiling(max(x)), by = 2),
-                     limits = c(0, NA),
+                     limits = c(0.5, NA),
                      expand = expansion(mult = c(0, 0.02))) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.08))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
   labs(x = "Chunks per trial", y = "Number of trials") +
-  jtools::theme_apa() +
-  paper_panel_theme +
-  theme(plot.margin = margin(t = 14, r = 18, b = 8, l = 18)); p_trial_desc
+  theme_paper_print(); p_trial_desc
 ```
 
 ```{r chunk-49 }
@@ -2339,45 +2382,38 @@ print(function_prevalence)
 
 p_function_scores <- ggplot(function_scores_subject,
                             aes(x = func, y = score, fill = func, color = func)) +
-geom_violin(width = 0.7,
+geom_violin(width = 0.75,
             trim = FALSE,
-            alpha = 0.30,
+            alpha = 0.25,
             scale = "width",
-            linewidth = 0.6) +
-  geom_boxplot(width = 0.2,
+            linewidth = 0.35) +
+  geom_boxplot(width = 0.16,
                outlier.shape = NA,
-               alpha = 0.65,
-               linewidth = 0.6) +
-  stat_summary(fun = median,
-               geom = "point",
-               shape = 95,
-               size = 5,
-               linewidth = 1) +
+               fill = "white",
+               linewidth = 0.35) +
   stat_summary(fun = mean,
                geom = "point",
-               shape = 18,
-               size = 2.8,
-               color = "black") +
-  scale_fill_manual(values = function_colors[1:4]) +
-  scale_color_manual(values = function_colors[1:4]) +
-  scale_x_discrete(expand = expansion(mult = c(0.01, 0.01))) +
+               shape = 23,
+               size = 1.6,
+               fill = "#222222",
+               color = "white",
+               stroke = 0.3) +
+  scale_fill_manual(values = function_colors[1:4], guide = "none") +
+  scale_color_manual(values = function_colors[1:4], guide = "none") +
   scale_y_continuous(breaks = seq(0, 60, 20),
                      limits = c(0, 70),
-                     expand = expansion(mult = c(0.01, 0.02))) +
+                     expand = expansion(mult = c(0, 0.02))) +
   labs(x = NULL,
        y = "Mean function score") +
-  jtools::theme_apa() +
-  paper_panel_theme +
-  theme(legend.position = "none",
-        plot.margin = margin(t = 14, r = 18, b = 8, l = 18)) +
-  scale_x_discrete(expand = expansion(add = c(0.5, 0.50)))
+  theme_paper_print() +
+  theme(axis.ticks.x = element_blank())
 
 
 p_function_scores
 
 ```
 
-```{r chunk-50, fig.width = 10, fig.height = 9}
+```{r chunk-50, fig.width = 6.3, fig.height = 5.7}
 # panel c: probability that each function is active
 p_overall_act <- ggplot(
   pred_hurdle,
@@ -2385,17 +2421,18 @@ p_overall_act <- ggplot(
       color = deliberation_function, fill = deliberation_function)
 ) +
   geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
-              alpha = 0.15, color = NA) +
-  geom_line(linewidth = 1) +
+              alpha = 0.14, color = NA) +
+  geom_line(linewidth = 0.75) +
   scale_color_manual(values = function_colors) +
   scale_fill_manual(values = function_colors) +
+  scale_x_continuous(breaks = seq(0, 1, 0.25),
+                     labels = c("0", "0.25", "0.5", "0.75", "1"),
+                     expand = expansion(mult = c(0.01, 0.02))) +
   labs(x = "Relative time", y = "Probability active",
        color = "Deliberation function",
        fill  = "Deliberation function") +
-  jtools::theme_apa() +
-  paper_panel_theme +
-  theme(legend.position = "none",
-        plot.margin = margin(t = 14, r = 18, b = 8, l = 18))
+  paper_print_legend("Deliberation function") +
+  theme_paper_print()
 
 # panel d: score for each function when active, on the 0-100 scale
 p_overall_int <- ggplot(
@@ -2404,65 +2441,36 @@ p_overall_int <- ggplot(
       color = deliberation_function, fill = deliberation_function)
 ) +
   geom_ribbon(aes(ymin = .lower_ci * 100, ymax = .upper_ci * 100),
-              alpha = 0.15, color = NA) +
-  geom_line(linewidth = 1) +
+              alpha = 0.14, color = NA) +
+  geom_line(linewidth = 0.75) +
   scale_color_manual(values = function_colors) +
   scale_fill_manual(values = function_colors) +
+  scale_x_continuous(breaks = seq(0, 1, 0.25),
+                     labels = c("0", "0.25", "0.5", "0.75", "1"),
+                     expand = expansion(mult = c(0.01, 0.02))) +
   labs(x = "Relative time", y = "Score given active",
        color = "Deliberation function",
        fill  = "Deliberation function") +
-  jtools::theme_apa() +
-  paper_panel_theme +
-  theme(legend.position = "none",
-        plot.margin = margin(t = 14, r = 18, b = 8, l = 18))
+  paper_print_legend("Deliberation function") +
+  theme_paper_print()
 
-fig2_legend_src <- p_overall_act +
+# row 1: A (trial descriptives) and B (composition); row 2: C (activation)
+# and D (intensity); the shared function legend is collected at the bottom
+figure_2_trajectories <- (
+  (p_trial_desc | p_function_scores) + plot_layout(widths = c(1, 1.15))
+) / (p_overall_act | p_overall_int) +
+  plot_annotation(tag_levels = "A") +
+  plot_layout(guides = "collect") &
   theme(legend.position = "bottom",
-        legend.title = element_text(size = 13, face = "bold", hjust = 0.5),
-        legend.text  = element_text(size = 12),
-        legend.margin = margin(0, 0, 0, 0),
-        legend.box.spacing = unit(2, "pt")) +
-  guides(color = guide_legend(title = "Deliberation function",
-                              title.position = "top",
-                              title.hjust = 0.5,
-                              nrow = 1,
-                              override.aes = list(linewidth = 1.1, alpha = 1)),
-         fill = "none")
-
-fig2_legend <- as_ggplot(get_legend(fig2_legend_src)) +
-  theme(plot.margin = margin(t = 0, r = 0, b = 6, l = 0))
-
-# row 1: A (trial descriptives) and B (composition)
-fig2_row_AB <- ggarrange(
-  p_trial_desc, p_function_scores,
-  ncol = 2, nrow = 1,
-  labels = c("A", "B"),
-  label.x = 0.01, label.y = 0.995,
-  font.label = list(size = 15, face = "bold")
-)
-
-# row 2: C (activation) and D (intensity)
-fig2_row_CD <- ggarrange(
-  p_overall_act, p_overall_int,
-  ncol = 2, nrow = 1,
-  labels = c("C", "D"),
-  label.x = 0.01, label.y = 0.995,
-  font.label = list(size = 15, face = "bold")
-)
-
-figure_2_trajectories <- ggarrange(
-  fig2_row_AB, fig2_row_CD, fig2_legend,
-  ncol = 1, nrow = 3,
-  heights = c(1, 1, 0.12)
-)
+        legend.margin = margin(2, 0, 0, 0))
 
 figure_2_trajectories
 
 ggsave("./Output/Figures_paper/Figure_2_trajectories.svg",
        plot   = figure_2_trajectories,
        dpi    = 600,
-       width  = fig_size_paper_2panel[["width"]],
-       height = 9)
+       width  = fig_width_print,
+       height = 5.7)
 ```
 
 
@@ -4382,244 +4390,227 @@ bezier_path <- function(x0, y0, x1, y1, curv, n = 60) {
          py = (1 - t)^2 * y0 + 2 * (1 - t) * t * cy + t^2 * y1)
 }
 
-make_loop_panel <- function(edges, from_conf = TRUE, title,
-                            lab_dx = 0, lab_dy = 0,
-                            justification_dx = 0,
-                            title_size = 4.9) {
-  conf_x <- if (from_conf) -1.45 else 1.45
-  fun_x <- if (from_conf) 1.45 else -1.45
-  t_lab <- if (from_conf) 0.68 else 0.32
-  conf_hw <- 0.62
-  curv <- 0.12
+# panel b of figure 4 is drawn at a fixed print size, so box widths, arrow gaps
+# and text share one scale; x and y below are data units per inch of the panel
+loop_panel_w <- fig_width_print * 0.60 - 0.15
+loop_panel_h <- 2.9 - 0.30
+loop_xlim <- c(-3.82, 3.88)
+loop_ylim <- c(-1.66, 1.60)
+loop_kx <- diff(loop_xlim) / loop_panel_w
+loop_ky <- diff(loop_ylim) / loop_panel_h
+loop_node_pt <- 7.5
 
-  edges <- edges %>%
-    mutate(y = loop_y[as.character(deliberation_function)],
-           fun_hw = 0.06 + 0.055 * nchar(as.character(deliberation_function)),
-           sig = signif != "",
-           lab = if_else(sig, paste0(sprintf("%+.1f", ame), signif), NA_character_),
-           lwd = scales::rescale(abs(ame), to = c(0.4, 1.5),
-                                 from = c(0, max(abs(edges$ame)))),
-           sx = if (from_conf) conf_x + conf_hw else fun_x + fun_hw,
-           sy = if (from_conf) 0 else y,
-           ex = if (from_conf) fun_x - fun_hw else conf_x - conf_hw,
-           ey = if (from_conf) y else y * 0.10,
-           dxc = ex - sx,
-           dyc = ey - sy,
-           len = sqrt(dxc^2 + dyc^2),
-           lab_x = sx + t_lab * dxc + 0.15 * (-dyc / len) + lab_dx +
-             if_else(deliberation_function == "Justification",
-                     justification_dx, 0),
-           lab_y = sy + t_lab * dyc + 0.15 * (dxc / len) + lab_dy)
+# box half-widths measured from the rendered label, so every arrow can stop
+# at the same distance from its box
+loop_half_width <- function(label) {
+  (systemfonts::string_width(label, family = paper_font, weight = "bold",
+                             size = loop_node_pt, res = 72) / 72 / 2 + 0.07) * loop_kx
+}
+loop_half_height <- (loop_node_pt / 72 / 2 + 0.05) * loop_ky
+loop_conf_hw <- loop_half_width("Confidence")
 
-  paths <- edges %>%
-    mutate(pts = purrr::pmap(list(sx, sy, ex, ey),
-                            ~ bezier_path(..1, ..2, ..3, ..4, curv))) %>%
-    tidyr::unnest(pts)
+# rounded box outline at exactly that half-width
+loop_box_path <- function(x, y, hw, r = 2.5 / 72, n = 8) {
+  rx <- r * loop_kx
+  ry <- r * loop_ky
+  a <- seq(0, pi / 2, length.out = n)
+  cx <- c(x + hw - rx, x - hw + rx, x - hw + rx, x + hw - rx)
+  cy <- c(y + loop_half_height - ry, y + loop_half_height - ry,
+          y - loop_half_height + ry, y - loop_half_height + ry)
 
-  heads <- paths %>%
-    group_by(deliberation_function) %>%
-    slice_tail(n = 2) %>%
-    ungroup()
-
-  ggplot() +
-    geom_path(data = paths,
-              aes(px, py, group = deliberation_function,
-                  color = deliberation_function, linewidth = lwd, linetype = sig),
-              lineend = "butt", show.legend = FALSE) +
-    geom_path(data = heads,
-              aes(px, py, group = deliberation_function,
-                  color = deliberation_function, linewidth = lwd),
-              linetype = "solid",
-              arrow = arrow(length = unit(0.18, "cm"), type = "closed"),
-              linejoin = "mitre", lineend = "butt", show.legend = FALSE) +
-    geom_text(data = edges,
-              aes(lab_x, lab_y, label = lab, color = deliberation_function),
-              size = 4.5, fontface = "bold", na.rm = TRUE, show.legend = FALSE) +
-    geom_label(data = edges,
-               aes(x = fun_x, y = y,
-                   label = deliberation_function, color = deliberation_function),
-               fill = "white", label.size = 0.5, label.r = unit(0.14, "lines"),
-               size = 4.6, fontface = "bold", show.legend = FALSE) +
-    annotate("label", x = conf_x, y = 0, label = "Confidence",
-             fill = "white", color = "gray25",
-             label.size = 0.5, label.r = unit(0.14, "lines"),
-             size = 4.8, fontface = "bold") +
-    annotate("text", x = 0, y = 1.88, label = title,
-             size = title_size, fontface = "bold", color = "gray15") +
-    scale_color_manual(values = function_colors) +
-    scale_linewidth_identity() +
-    scale_linetype_manual(values = c(`TRUE` = "solid", `FALSE` = "dotted")) +
-    coord_cartesian(xlim = c(-2.35, 2.35), ylim = c(-1.75, 2.05), clip = "off") +
-    theme_void() +
-    theme(plot.margin = margin(t = 2, r = 8, b = 6, l = 8))
+  tibble(bx = c(cx[1] + rx * cos(a), cx[2] + rx * cos(a + pi / 2),
+                cx[3] + rx * cos(a + pi), cx[4] + rx * cos(a + 3 * pi / 2)),
+         by = c(cy[1] + ry * sin(a), cy[2] + ry * sin(a + pi / 2),
+                cy[3] + ry * sin(a + pi), cy[4] + ry * sin(a + 3 * pi / 2)))
 }
 
 # shared function boxes for the two lagged directions
 loop_nodes <- tibble(
   deliberation_function = factor(names(loop_y), levels = names(loop_y)),
   y = unname(loop_y),
-  fun_hw = (0.06 + 0.055 * nchar(names(loop_y))) * 7.7 / 8.8)
+  fun_hw = map_dbl(names(loop_y), loop_half_width))
+
+# arrow geometry and label positions for one set of lagged edges
+loop_edge_geometry <- function(edges) {
+  edges %>%
+    left_join(loop_nodes, by = "deliberation_function") %>%
+    group_by(direction) %>%
+    mutate(sig = signif != "",
+           lab = if_else(sig, paste0(sub("^-", "\u2212", sprintf("%+.1f", ame)), signif),
+                         NA_character_),
+           lwd = scales::rescale(abs(ame), to = c(0.25, 0.95),
+                                 from = c(0, max(abs(ame)))),
+           # arrows start just under a box border, fanned along its edge, and
+           # stop at the same gap from every box
+           sx = if_else(direction == "activation", -3 + loop_conf_hw - 0.12, fun_hw - 0.05),
+           sy = if_else(direction == "activation", y * 0.05, y),
+           ex = if_else(direction == "activation", -fun_hw - 0.07, 3 - loop_conf_hw - 0.07),
+           ey = if_else(direction == "activation", y, y * 0.09),
+           label_t = if_else(direction == "activation", 0.66, 0.34),
+           curv = case_when(
+             deliberation_function == "Generation" ~ -0.28,
+             deliberation_function == "Justification" ~ -0.05,
+             direction == "confidence" & deliberation_function == "Regulation" ~ 0.27,
+             deliberation_function == "Regulation" ~ 0.20,
+             TRUE ~ 0.12),
+           cx = (sx + ex) / 2 + curv * (ey - sy) / 2,
+           cy = (sy + ey) / 2 - curv * (ex - sx) / 2,
+           lab_x = (1 - label_t)^2 * sx +
+             2 * (1 - label_t) * label_t * cx + label_t^2 * ex -
+             0.22 * (ey - sy) / sqrt((ex - sx)^2 + (ey - sy)^2) +
+             if_else(deliberation_function == "Justification",
+                     if_else(direction == "activation", 0.18, -0.30), 0) -
+             if_else(direction == "activation" &
+                       deliberation_function == "Generation", 0.18, 0),
+           lab_y = (1 - label_t)^2 * sy +
+             2 * (1 - label_t) * label_t * cy + label_t^2 * ey +
+             0.22 * (ex - sx) / sqrt((ex - sx)^2 + (ey - sy)^2) + 0.10 -
+             if_else(direction == "activation" &
+                       deliberation_function == "Control", 0.14, 0) -
+             if_else(direction == "activation" &
+                       deliberation_function == "Justification", 0.11, 0) -
+             if_else(direction == "activation" &
+                       deliberation_function == "Generation", 0.14, 0) -
+             if_else(direction == "confidence" &
+                       deliberation_function == "Regulation", 0.10, 0)) %>%
+    ungroup()
+}
 
 loop_edges <- bind_rows(
   mutate(loop_conf_to_activation, direction = "activation"),
   mutate(loop_delib_to_conf, direction = "confidence")) %>%
-  left_join(loop_nodes, by = "deliberation_function") %>%
-  group_by(direction) %>%
-  mutate(sig = signif != "",
-         lab = if_else(sig, paste0(sprintf("%+.1f", ame), signif), NA_character_),
-         lwd = scales::rescale(abs(ame), to = c(0.4, 1.5),
-                               from = c(0, max(abs(ame)))),
-         sx = if_else(direction == "activation", -3 + 0.62 * 7.7 / 8.8,
-                      fun_hw - case_when(
-                        deliberation_function == "Justification" ~ 0.10 * 7.7 / 8.8,
-                        deliberation_function == "Regulation" ~ 0.03 * 7.7 / 8.8,
-                        TRUE ~ 0)),
-         sy = if_else(direction == "activation", 0, y),
-         head_gap = if_else(deliberation_function == "Justification", 0.04, 0.14) * 7.7 / 8.8,
-         ex = if_else(direction == "activation", -fun_hw - head_gap, 3 - (0.62 + 0.14) * 7.7 / 8.8),
-         ey = if_else(direction == "activation",
-                      y - if_else(deliberation_function == "Generation", 0.04, 0),
-                      y * 0.12),
-         label_t = if_else(direction == "activation", 0.66, 0.34),
-         curv = case_when(
-           deliberation_function == "Generation" ~ -0.28,
-           deliberation_function == "Justification" ~ -0.05,
-           direction == "confidence" & deliberation_function == "Regulation" ~ 0.27,
-           deliberation_function == "Regulation" ~ 0.20,
-           TRUE ~ 0.12),
-         cx = (sx + ex) / 2 + curv * (ey - sy) / 2,
-         cy = (sy + ey) / 2 - curv * (ex - sx) / 2,
-         lab_x = (1 - label_t)^2 * sx +
-           2 * (1 - label_t) * label_t * cx + label_t^2 * ex -
-           0.22 * (ey - sy) / sqrt((ex - sx)^2 + (ey - sy)^2) +
-           if_else(deliberation_function == "Justification",
-                   if_else(direction == "activation", 0.18, -0.30), 0),
-         lab_y = (1 - label_t)^2 * sy +
-           2 * (1 - label_t) * label_t * cy + label_t^2 * ey +
-           0.22 * (ex - sx) / sqrt((ex - sx)^2 + (ey - sy)^2) + 0.10 -
-           if_else(direction == "activation" &
-                     deliberation_function == "Control", 0.14, 0) -
-           if_else(direction == "activation" &
-                     deliberation_function == "Justification", 0.11, 0) -
-           if_else(direction == "activation" &
-                     deliberation_function == "Generation", 0.14, 0) -
-           if_else(direction == "confidence" &
-                     deliberation_function == "Regulation", 0.10, 0)) %>%
-  ungroup()
+  loop_edge_geometry()
 
-loop_paths <- loop_edges %>%
-  mutate(pts = purrr::pmap(list(sx, sy, ex, ey, curv),
-                          ~ bezier_path(..1, ..2, ..3, ..4, ..5))) %>%
-  tidyr::unnest(pts)
+# draw a set of lagged edges with their function and confidence boxes
+plot_loop <- function(edges, confidence_x = c(-3, 3), xlim = loop_xlim) {
+  paths <- edges %>%
+    mutate(pts = purrr::pmap(list(sx, sy, ex, ey, curv),
+                            ~ bezier_path(..1, ..2, ..3, ..4, ..5))) %>%
+    tidyr::unnest(pts)
 
-loop_heads <- loop_paths %>%
-  group_by(direction, deliberation_function) %>%
-  slice_tail(n = 2) %>%
-  ungroup()
+  heads <- paths %>%
+    group_by(direction, deliberation_function) %>%
+    slice_tail(n = 2) %>%
+    ungroup()
 
-p_loop_bidirectional <- ggplot() +
-  geom_path(data = loop_paths,
-            aes(px, py, group = interaction(direction, deliberation_function),
-                color = deliberation_function, linewidth = lwd, linetype = sig),
-            lineend = "butt", show.legend = FALSE) +
-  geom_path(data = loop_heads,
-            aes(px, py, group = interaction(direction, deliberation_function),
-                color = deliberation_function, linewidth = lwd),
-            linetype = "solid",
-            arrow = arrow(length = unit(0.18, "cm"), type = "closed"),
-            linejoin = "mitre", lineend = "butt", show.legend = FALSE) +
-  geom_text(data = loop_edges,
-            aes(lab_x, lab_y, label = lab, color = deliberation_function),
-            size = 4.5, fontface = "bold", na.rm = TRUE, show.legend = FALSE) +
-  geom_label(data = loop_nodes,
-             aes(x = 0, y = y, label = deliberation_function,
-                 color = deliberation_function),
-             fill = "white", label.size = 0.5, label.r = unit(0.14, "lines"),
-             size = 4.6, fontface = "bold", show.legend = FALSE) +
-  annotate("label", x = c(-3, 3), y = 0, label = "Confidence",
-           fill = "white", color = "gray25",
-           label.size = 0.5, label.r = unit(0.14, "lines"),
-           size = 4.8, fontface = "bold") +
-  scale_color_manual(values = function_colors) +
-  scale_linewidth_identity() +
-  scale_linetype_manual(values = c(`TRUE` = "solid", `FALSE` = "dotted")) +
-  scale_x_continuous(expand = expansion(mult = 0)) +
-  scale_y_continuous(expand = expansion(mult = 0)) +
-  coord_cartesian(xlim = c(-3.82, 3.88), ylim = c(-1.66, 1.60), clip = "off") +
-  theme_void() +
-  theme(plot.margin = margin(t = 2, r = 8, b = 6, l = 8))
+  boxes <- bind_rows(
+    transmute(loop_nodes, label = as.character(deliberation_function), x = 0, y,
+              col = unname(function_colors[as.character(deliberation_function)])),
+    tibble(label = "Confidence", x = confidence_x, y = 0, col = "gray30")) %>%
+    mutate(id = row_number(),
+           hw = map_dbl(label, loop_half_width),
+           pts = purrr::pmap(list(x, y, hw), loop_box_path))
 
-p_loop_conf_intensity <- make_loop_panel(
-  loop_conf_to_intensity, from_conf = TRUE,
-  title = "Confidence (n − 1) → Deliberation intensity (n)",
-  justification_dx = 0.10)
+  ggplot() +
+    geom_path(data = paths,
+              aes(px, py, group = interaction(direction, deliberation_function),
+                  color = deliberation_function, linewidth = lwd, linetype = sig),
+              lineend = "butt", show.legend = FALSE) +
+    geom_path(data = heads,
+              aes(px, py, group = interaction(direction, deliberation_function),
+                  color = deliberation_function, linewidth = lwd),
+              linetype = "solid",
+              arrow = arrow(length = unit(3.5, "pt"), type = "closed", angle = 25),
+              linejoin = "mitre", lineend = "butt", show.legend = FALSE) +
+    geom_text(data = edges,
+              aes(lab_x, lab_y, label = lab, color = deliberation_function),
+              size = 7 / .pt, family = paper_font, fontface = "bold",
+              na.rm = TRUE, show.legend = FALSE) +
+    geom_polygon(data = tidyr::unnest(boxes, pts),
+                 aes(bx, by, group = id, color = I(col)),
+                 fill = "white", linewidth = 0.45) +
+    geom_text(data = boxes,
+              aes(x, y, label = label, color = I(col)),
+              size = loop_node_pt / .pt, family = paper_font, fontface = "bold") +
+    scale_color_manual(values = function_colors, guide = "none") +
+    scale_linewidth_identity() +
+    scale_linetype_manual(values = c(`TRUE` = "solid", `FALSE` = "11"), guide = "none") +
+    coord_cartesian(xlim = xlim, ylim = loop_ylim, expand = FALSE, clip = "off") +
+    theme_void() +
+    theme(plot.margin = margin(0, 0, 0, 0))
+}
+
+p_loop_bidirectional <- plot_loop(loop_edges)
+
+# supplementary figure: confidence (n - 1) to intensity (n), drawn as the left
+# half of the same layout so boxes, arrows and text match figure 4b
+loop_intensity_edges <- mutate(loop_conf_to_intensity, direction = "activation") %>%
+  loop_edge_geometry()
+loop_intensity_xlim <- c(loop_xlim[1], 0.95)
+
+p_loop_conf_intensity <- plot_loop(loop_intensity_edges, confidence_x = -3,
+                                   xlim = loop_intensity_xlim)
 
 p_loop_bidirectional
 ```
 
-```{r chunk-93, fig.width = 13.75, fig.height = 5}
-fig4_panel_tight <- theme(plot.margin = margin(t = 16, r = 18, b = 18, l = 18))
-
+```{r chunk-93, fig.width = 6.3, fig.height = 2.9}
 # panel a: confidence trajectory by accuracy, legend inside the panel
-fig4_panelA <- paper_panel(
-  p_conf_time +
-    scale_color_manual(values = response_colors,
-                       labels = c(Correct = "Correct", Incorrect = "Biased")) +
-    scale_fill_manual(values = response_colors,
-                      labels = c(Correct = "Correct", Incorrect = "Biased")) +
-    guides(color = guide_legend(title = "Response",
-                                title.position = "top",
-                                title.hjust = 0.5,
-                                nrow = 1,
-                                override.aes = list(linewidth = 1.1, alpha = 1)),
-           fill = "none") +
-    theme(legend.position = c(0.02, 0.98),
-          legend.justification = c(0, 1),
-          legend.direction = "horizontal",
-          legend.background = element_rect(fill = "white", colour = NA),
-          legend.key = element_blank(),
-          legend.key.width = unit(0.8, "cm"),
-          legend.title = element_text(size = 12, face = "bold", hjust = 0.5),
-          legend.text = element_text(size = 11),
-          legend.margin = margin(3, 6, 3, 4),
-          legend.box.spacing = unit(0, "pt")),
-  legend_position = c(0.1, 0.92)) +
-  fig4_panel_tight +
+fig4_panelA <- ggplot(
+  pred_conf_time,
+  aes(x = norm_mid, y = .fitted, color = response, fill = response)
+) +
+  geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci), alpha = 0.16, color = NA) +
+  geom_line(linewidth = 0.75) +
+  geom_segment(data = sig_conf_traj_df,
+               aes(x = x, xend = xend, y = y_sig, yend = y_sig),
+               inherit.aes = FALSE,
+               color = sig_color,
+               linewidth = 0.9) +
+  scale_color_manual(values = response_colors,
+                     labels = c(Correct = "Correct", Incorrect = "Biased")) +
+  scale_fill_manual(values = response_colors,
+                    labels = c(Correct = "Correct", Incorrect = "Biased")) +
+  scale_x_continuous(breaks = seq(0, 1, 0.25),
+                     labels = c("0", "0.25", "0.5", "0.75", "1"),
+                     expand = expansion(mult = 0.02)) +
   scale_y_continuous(limits = c(y_axis_min_conf_traj, NA),
-                     expand = expansion(mult = c(0, 0.14)),
+                     expand = expansion(mult = c(0, 0.16)),
                      breaks = seq(0.50, 0.70, 0.05),
-                     labels = function(x) x * 100)
+                     labels = function(x) x * 100) +
+  labs(x = "Relative time", y = "Predicted confidence") +
+  paper_print_legend("Response") +
+  theme_paper_print() +
+  theme(legend.position = "inside",
+        legend.position.inside = c(0.03, 1.02),
+        legend.justification = c(0, 1),
+        legend.direction = "horizontal",
+        plot.margin = margin(14, 8, 4, 6))
 
-# assemble
-figure_4_core <- ggarrange(fig4_panelA, p_loop_bidirectional,
-                           ncol = 2, nrow = 1, widths = c(2, 3))
-
-figure_4_confidence_and_lagged <- cowplot::ggdraw(figure_4_core) +
+# assemble on an inch grid so panel b is drawn at exactly the size its box
+# widths were measured for
+figure_4_confidence_and_lagged <-
+  cowplot::ggdraw(xlim = c(0, fig_width_print), ylim = c(0, 2.9)) +
+  cowplot::draw_plot(fig4_panelA, x = 0, y = 0,
+                     width = fig_width_print * 0.40, height = 2.9) +
+  cowplot::draw_plot(p_loop_bidirectional, x = fig_width_print * 0.40 + 0.10, y = 0.12,
+                     width = loop_panel_w, height = loop_panel_h) +
   cowplot::draw_plot_label(label = c("A", "B"),
-                           x = c(0.01, 0.41),
-                           y = c(0.995, 0.995),
-                           size = 15, fontface = "bold")
+                           x = c(0.02, fig_width_print * 0.40 + 0.02),
+                           y = c(2.88, 2.88),
+                           hjust = 0, vjust = 1,
+                           size = 10, fontface = "bold", family = paper_font)
 figure_4_confidence_and_lagged
 
 ggsave("./Output/Figures_paper/Figure_4_confidence_and_lagged.svg",
        plot = figure_4_confidence_and_lagged,
        dpi = 600,
-       width = 13.75,
-       height = 5)
+       width = fig_width_print,
+       height = 2.9)
 ```
 
 **Figure 4.** Confidence dynamics and lagged associations with deliberation. **(A)** Predicted confidence over relative time, separately for correct (green) and biased (red) trials. Confidence increased across correct trials, whereas the slight decline in biased trials was not reliable. Curves are generalized additive mixed model predictions, and shaded bands are simultaneous 95% confidence intervals. The black segment marks the period during which the confidence band for the correct–biased difference excludes zero. **(B)** Bidirectional lagged associations between confidence and deliberation. Left-hand arrows show the average marginal association between a one-SD increase in confidence at chunk *n* − 1 and the probability that each function is active at chunk *n*, in percentage points. Right-hand arrows show the average marginal association between a one-SD increase in each function at chunk *n* − 1 and confidence at chunk *n*, in points on the 0–100 confidence scale. Solid arrows indicate associations that remained reliable after Benjamini–Hochberg correction; dotted arrows indicate associations that did not. \*\* *p* < .01. \*\*\* *p* < .001. Average marginal effects were computed from fixed-effects predictions excluding random effects.
 
 ### Supplementary figure (confidence and deliberation intensity)
 
-```{r chunk-94, fig.width = 5.5, fig.height = 5}
+```{r chunk-94, fig.width = 2.3, fig.height = 2.6}
 p_loop_conf_intensity
 
 ggsave("./Output/Figures_paper/Supplementary_figure_confidence_intensity.svg",
        plot = p_loop_conf_intensity,
        dpi = 600,
-       width = 5.5,
-       height = 5)
+       width = diff(loop_intensity_xlim) / loop_kx,
+       height = loop_panel_h)
 ```
 
 **Supplementary figure.** Lagged association between confidence and deliberation intensity. Arrows show the average marginal association between a one-SD increase in confidence at chunk *n* − 1 and the intensity of each function at chunk *n* when active, in points on the 0–100 score scale. Solid arrows indicate associations that remained reliable after Benjamini–Hochberg correction; dotted arrows indicate associations that did not. \*\*\* *p* < .001. Average marginal effects were computed from fixed-effects predictions excluding random effects.
@@ -5693,17 +5684,7 @@ future::plan(previous_ml_plan)
 
 The three rows show participant mean function scores by accuracy, followed by activation and intensity trajectories. The score distributions include single-chunk trials, as in Figure 2B. All rows share the same function order and accuracy colors. The whole-trial coefficients are reported in Table 3, and AUC by temporal quarter is shown separately in the supplementary figure below.
 
-```{r chunk-103, fig.width = 11, fig.height = 12}
-# shared look for the faceted panels
-fig3_facet_theme <- theme(
-  plot.title = element_blank(),
-  plot.subtitle = element_blank(),
-  strip.background = element_rect(colour = "gray85", fill = "gray97"),
-  strip.text = element_text(hjust = 0.5, face = "bold"),
-  plot.title.position = "plot"
-)
-fig3_panel_tight <- theme(plot.margin = margin(t = 4, r = 18, b = 18, l = 18))
-
+```{r chunk-103, fig.width = 6.3, fig.height = 6.8}
 # panel a prevalence by accuracy
 fig3_scores_subject <- chunks_long_question %>%
   group_by(subject_id, deliberation_function, response) %>%
@@ -5711,79 +5692,76 @@ fig3_scores_subject <- chunks_long_question %>%
   mutate(deliberation_function = factor(deliberation_function,
                                          levels = names(function_colors)[1:4]))
 
-fig3_prevalence <- paper_panel(
-  ggplot(fig3_scores_subject,
-         aes(x = 1, y = score, fill = response, color = response,
-             group = response)) +
-    geom_violin(width = 0.8, trim = FALSE, alpha = 0.30,
-                scale = "width", linewidth = 0.6,
-                position = position_dodge(width = 0.8)) +
-    geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.65,
-                 linewidth = 0.6, position = position_dodge(width = 0.8)) +
-    stat_summary(fun = mean, geom = "point", shape = 18, size = 2.8,
-                 color = "black", position = position_dodge(width = 0.8)) +
+fig3_prevalence <- ggplot(fig3_scores_subject,
+                          aes(x = response, y = score, fill = response, color = response)) +
+  geom_violin(width = 0.85, trim = FALSE, alpha = 0.25,
+              scale = "width", linewidth = 0.35) +
+  geom_boxplot(width = 0.18, outlier.shape = NA, fill = "white", linewidth = 0.35) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 1.5,
+               fill = "#222222", color = "white", stroke = 0.3) +
+  facet_wrap(~ deliberation_function, nrow = 1) +
+  scale_fill_manual(values = response_colors, guide = "none") +
+  scale_color_manual(values = response_colors, guide = "none") +
+  scale_y_continuous(breaks = seq(0, 100, 20),
+                     expand = expansion(mult = c(0, 0.02))) +
+  coord_cartesian(ylim = c(0, max(70, fig3_scores_subject$score, na.rm = TRUE))) +
+  labs(x = NULL, y = "Mean function score") +
+  theme_paper_print() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+# panels b and c share one layout: curves by accuracy, black significance band
+fig3_trajectory <- function(pred, sig, ylab, scale = 1, y_min) {
+  ggplot(pred, aes(x = norm_mid, y = .fitted * scale, color = response, fill = response)) +
+    geom_ribbon(aes(ymin = .lower_ci * scale, ymax = .upper_ci * scale),
+                alpha = 0.16, color = NA) +
+    geom_line(linewidth = 0.6) +
+    geom_segment(data = sig,
+                 aes(x = x, xend = xend, y = y_sig, yend = y_sig),
+                 inherit.aes = FALSE,
+                 color = sig_color,
+                 linewidth = 0.9) +
     facet_wrap(~ deliberation_function, nrow = 1) +
-    scale_fill_manual(values = response_colors) +
-    scale_color_manual(values = response_colors) +
-    scale_x_continuous(breaks = NULL, limits = c(0.5, 1.5)) +
-    scale_y_continuous(breaks = seq(0, 100, 20),
-                       expand = expansion(mult = c(0.01, 0.02))) +
-    coord_cartesian(ylim = c(0, max(70, fig3_scores_subject$score, na.rm = TRUE))) +
-    labs(x = NULL, y = "Mean function score") +
-    jtools::theme_apa()) +
-  fig3_facet_theme +
-  fig3_panel_tight
-
-# panel b activation by accuracy
-fig3_activation <- paper_panel(p_activation_by_response, legend_position = "none") +
-  facet_wrap(~ deliberation_function, nrow = 1) +
-  fig3_facet_theme +
-  fig3_panel_tight
-
-# panel c intensity by accuracy
-fig3_intensity <- paper_panel(p_intensity_by_response, legend_position = "none") +
-  facet_wrap(~ deliberation_function, nrow = 1) +
-  fig3_facet_theme +
-  fig3_panel_tight
-
-# accuracy legend shared by all panels
-fig3_legend_acc <- as_ggplot(get_legend(
-  p_activation_by_response +
     scale_color_manual(values = response_colors,
                        labels = c(Correct = "Correct", Incorrect = "Biased")) +
     scale_fill_manual(values = response_colors,
                       labels = c(Correct = "Correct", Incorrect = "Biased")) +
-    theme(legend.position = "top",
-          legend.title = element_text(size = 13, face = "bold", hjust = 0.5),
-          legend.text = element_text(size = 12),
-          legend.margin = margin(0, 0, 0, 0),
-          legend.box.spacing = unit(2, "pt")) +
-    guides(color = guide_legend(title = "Response",
-                                title.position = "top",
-                                title.hjust = 0.5, nrow = 1,
-                                override.aes = list(linewidth = 1.1, alpha = 1)),
-           fill = "none")
-)) + theme(plot.margin = margin(t = 8, r = 0, b = 2, l = 0))
+    scale_x_continuous(breaks = c(0, 0.5, 1), labels = c("0", "0.5", "1"),
+                       expand = expansion(mult = 0.03)) +
+    scale_y_continuous(limits = c(y_min, NA), expand = expansion(mult = c(0, 0.04))) +
+    labs(x = "Relative time", y = ylab) +
+    paper_print_legend("Response") +
+    theme_paper_print()
+}
+
+# panel b activation by accuracy
+fig3_activation <- fig3_trajectory(pred_hurdle_acc, sig_hurdle_traj_df,
+                                   "Probability active", y_min = y_axis_min_traj) +
+  theme(axis.title.x = element_blank())
+
+# panel c intensity by accuracy
+fig3_intensity <- fig3_trajectory(pred_beta_acc, sig_beta_traj_df,
+                                  "Score given active", scale = 100,
+                                  y_min = y_axis_min_beta_traj)
+
+# accuracy legend shared by all panels, in its own row so the panel letters
+# stay next to their panels
+fig3_legend_acc <- wrap_elements(full = get_legend(
+  fig3_activation + theme(legend.position = "top")))
 
 # assemble
-figure_3_by_accuracy <- ggarrange(
-  fig3_prevalence, fig3_activation, fig3_intensity,
-  ncol = 1, nrow = 3, align = "v",
-  labels = c("A", "B", "C"),
-  label.x = 0.01, label.y = 0.995,
-  font.label = list(size = 15, face = "bold"),
-  heights = c(0.85, 1, 1))
-
-figure_3_by_accuracy <- ggarrange(fig3_legend_acc, figure_3_by_accuracy,
-                                  ncol = 1, nrow = 2,
-                                  heights = c(0.12, 2.85))
+figure_3_by_accuracy <- fig3_legend_acc /
+  wrap_elements(full = (fig3_prevalence / fig3_activation / fig3_intensity) +
+                  plot_layout(heights = c(0.85, 1, 1)) +
+                  plot_annotation(tag_levels = "A") &
+                  theme(legend.position = "none")) +
+  plot_layout(heights = c(0.045, 1))
 figure_3_by_accuracy
 
 ggsave("./Output/Figures_paper/Figure_3_by_accuracy.svg",
        plot = figure_3_by_accuracy,
        dpi = 600,
-       width = fig_size_paper_4panel[["width"]],
-       height = 12)
+       width = fig_width_print,
+       height = 6.8)
 ```
 
 **Figure 3.** Deliberation dynamics distinguish correct from biased reasoning. **(A)** Participant mean function scores for correct (green) and biased (red) trials. Scores were averaged across chunks within each trial and then across trials within each participant and response category. Violins show the distributions of participant means; boxes show the interquartile range, horizontal lines mark medians, and black diamonds mark means. **(B)** Predicted probability that each function is active. Correct trials show a greater likelihood of justification, control and regulation being active, but no detectable difference in generation. **(C)** Predicted score for each function when it is active. Correct trials show higher justification and control scores, and lower generation scores. Curves in B and C are generalized additive mixed model predictions from the hurdle model, and shaded bands are simultaneous 95% confidence intervals. Black horizontal segments mark the periods where the confidence band of the correct–biased difference excludes zero. Relative time is each chunk's midpoint expressed relative to the span of retained chunks (0 = first, 1 = last).
@@ -5850,6 +5828,11 @@ robustness_scenarios <- tibble::tribble(
 )
 
 scenario_levels <- robustness_scenarios$label
+
+# display names for the scenario panels; the labels above stay as cache keys
+scenario_labels <- setNames(c("Original rule", "No edge filtering",
+                              "Stricter edge filtering", "Activation threshold > 5"),
+                            scenario_levels)
 ```
 
 ```{r chunk-106 }
@@ -6244,19 +6227,24 @@ plot_overall_traj <- function(curves_df, y_lab, title) {
     geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
                 alpha = 0.15, color = NA) +
     geom_line(linewidth = 1) +
-    facet_wrap(~ scenario, ncol = length(scenario_levels)) +
-    scale_color_manual(values = function_colors) +
-    scale_fill_manual(values  = function_colors) +
-    labs(x = "Normalized position", y = y_lab,
-         color = NULL, fill = NULL) +
-    jtools::theme_apa() +
+    facet_wrap(~ scenario, ncol = length(scenario_levels),
+               labeller = as_labeller(scenario_labels)) +
+    scale_color_manual(values = function_colors,
+                       breaks = names(function_colors)[1:4]) +
+    scale_fill_manual(values  = function_colors,
+                      breaks = names(function_colors)[1:4]) +
+    labs(x = "Relative time", y = y_lab,
+         color = "Deliberation function", fill = "Deliberation function") +
+    guides(color = guide_legend(title.position = "top", title.hjust = 0.5)) +
+    jtools::theme_apa(legend.use.title = TRUE) +
     theme(legend.position = "top",
+          legend.title = element_text(face = "bold"),
           plot.title = element_blank(),
           plot.subtitle = element_blank())
 }
 
 p_act_overall_rob <- plot_overall_traj(traj_curves("hurdle"),
-                                       "P(function active)",
+                                       "Probability active",
                                        "Activation across scenarios")
 p_act_overall_rob
 
@@ -6268,7 +6256,7 @@ ggsave("./Output/Robustness_analyses/Chunk_threshold/robustness_activation_overa
 
 ```{r chunk-112 }
 p_int_overall_rob <- plot_overall_traj(traj_curves("beta"),
-                                       "Score (given active)",
+                                       "Score given active",
                                        "Intensity across scenarios")
 p_int_overall_rob
 
@@ -6288,10 +6276,13 @@ plot_by_acc_traj <- function(curves_df, y_lab, title) {
     geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
                 alpha = 0.2, color = NA) +
     geom_line(linewidth = 1) +
-    facet_grid(deliberation_function ~ scenario) +
-    scale_color_manual(values = response_colors) +
-    scale_fill_manual(values  = response_colors) +
-    labs(x = "Normalized position", y = y_lab,
+    facet_grid(deliberation_function ~ scenario,
+               labeller = labeller(scenario = scenario_labels)) +
+    scale_color_manual(values = response_colors,
+                       labels = c(Correct = "Correct", Incorrect = "Biased")) +
+    scale_fill_manual(values  = response_colors,
+                      labels = c(Correct = "Correct", Incorrect = "Biased")) +
+    labs(x = "Relative time", y = y_lab,
          color = NULL, fill = NULL) +
     jtools::theme_apa() +
     theme(legend.position = "top",
@@ -6302,7 +6293,7 @@ plot_by_acc_traj <- function(curves_df, y_lab, title) {
 }
 
 p_act_acc_rob <- plot_by_acc_traj(traj_curves("hurdle_acc", by_response = TRUE),
-                                  "P(active)",
+                                  "Probability active",
                                   "Activation by accuracy across scenarios")
 p_act_acc_rob
 
@@ -6314,7 +6305,7 @@ ggsave("./Output/Robustness_analyses/Chunk_threshold/robustness_activation_by_ac
 
 ```{r chunk-114 }
 p_int_acc_rob <- plot_by_acc_traj(traj_curves("beta_acc", by_response = TRUE),
-                                  "Score (given active)",
+                                  "Score given active",
                                   "Intensity by accuracy across scenarios")
 p_int_acc_rob
 
@@ -6377,9 +6368,10 @@ plot_diff <- function(diff_df, y_lab, title) {
     geom_segment(data = sig_df,
                  aes(x = x, xend = xend, y = y_sig, yend = y_sig),
                  inherit.aes = FALSE, color = "black", linewidth = 1.8) +
-    facet_grid(deliberation_function ~ scenario) +
+    facet_grid(deliberation_function ~ scenario,
+               labeller = labeller(scenario = scenario_labels)) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
-    labs(x = "Normalized position", y = y_lab) +
+    labs(x = "Relative time", y = y_lab) +
     jtools::theme_apa() +
     theme(
       strip.text.y  = element_text(face = "bold", size = 12),
@@ -6393,7 +6385,7 @@ plot_diff <- function(diff_df, y_lab, title) {
 
 ```{r chunk-116 }
 p_diff_act_rob <- plot_diff(diff_curves("hurdle_acc"),
-                            "Difference in logit P(active)\n(Correct − Incorrect)",
+                            "Activation difference\n(correct − biased, logit scale)",
                             "Activation differences across scenarios")
 p_diff_act_rob
 
@@ -6405,7 +6397,7 @@ ggsave("./Output/Robustness_analyses/Chunk_threshold/robustness_activation_diffe
 
 ```{r chunk-117 }
 p_diff_int_rob <- plot_diff(diff_curves("beta_acc"),
-                            "Difference in logit score\n(Correct − Incorrect)",
+                            "Intensity difference\n(correct − biased, logit scale)",
                             "Intensity differences across scenarios")
 p_diff_int_rob
 
@@ -7049,11 +7041,11 @@ sim_long_panel <- simulate_paired_long() %>%
   pivot_longer(c(latent, confidence_z, deliberation_z),
                names_to = "measure", values_to = "value") %>%
   mutate(measure = recode(measure,
-                          latent         = "Latent uncertainty",
+                          latent         = "Uncertainty",
                           confidence_z   = "Confidence",
                           deliberation_z = "Deliberation"),
          measure = factor(measure,
-                          levels = c("Latent uncertainty", "Confidence", "Deliberation")))
+                          levels = c("Uncertainty", "Confidence", "Deliberation")))
 
 p_common_cause_paired <- ggplot(sim_long_panel,
                                 aes(x = chunk_id, y = value,
@@ -7061,10 +7053,16 @@ p_common_cause_paired <- ggplot(sim_long_panel,
   geom_hline(yintercept = 0, linetype = "dashed",
              color = "grey80", linewidth = 0.35) +
   geom_smooth(method = "loess", formula = y ~ x,
-              se = FALSE, span = 0.07, linewidth = 1.25) +
+              se = FALSE, span = 0.07, linewidth = 0.8) +
   facet_wrap(~ measure, ncol = 1, scales = "free_y") +
   scale_color_manual(values = c("Null model"                    = "black",
-                                "Confidence-deliberation model" = "#0072B2")) +
+                                "Confidence-deliberation model" = "#0072B2"),
+                     labels = c("Null model"                    = "Shared state only",
+                                "Confidence-deliberation model" = "Shared state + lagged effect")) +
+  scale_linetype_manual(values = c("Null model"                    = "solid",
+                                   "Confidence-deliberation model" = "dashed"),
+                        labels = c("Null model"                    = "Shared state only",
+                                   "Confidence-deliberation model" = "Shared state + lagged effect")) +
   scale_x_continuous(breaks = seq(0, 40, by = 10)) +
   labs(x = "Chunk", y = "Standardized value",
        color = NULL, linetype = NULL) +
@@ -7175,23 +7173,21 @@ Boxplots of the recovered slopes per function and condition. Under shared-state-
 p_cc <- cc_results %>%
   mutate(condition = factor(condition,
                             levels = c("shared latent state only", "true lagged signal")),
-         Function = factor(Function, levels = core_function_levels)) %>%
+         Function = factor(Function, levels = names(function_colors)[1:4])) %>%
   ggplot(aes(x = Function, y = estimate, fill = condition)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
-  geom_hline(yintercept = -0.30, linetype = "dotted", color = "firebrick3") +
+  geom_hline(yintercept = -0.30, linetype = "dotted", color = "grey30") +
   geom_boxplot(alpha = 0.75,
                outlier.alpha = 0.2,
                position = position_dodge(width = 0.8)) +
-  annotate("text",
-           x = which(core_function_levels == "Regulation") + 0.2,
-           y = 0.08,
-           label = "true = 0",
-           size = 3) +
-  scale_fill_manual(values = c("shared latent state only" = "salmon",
-                               "true lagged signal" = "steelblue"),
+  # same condition colours and names as the illustration of the two conditions
+  scale_fill_manual(values = c("shared latent state only" = "grey75",
+                               "true lagged signal" = "#0072B2"),
+                    labels = c("shared latent state only" = "Shared state only",
+                               "true lagged signal" = "Shared state + lagged effect"),
                     name = NULL) +
   labs(x = NULL,
-       y = "Recovered chunk-dev (n−1) slope") +
+       y = "Estimated lagged-confidence coefficient") +
   jtools::theme_apa() +
   theme(legend.position = "top")
 

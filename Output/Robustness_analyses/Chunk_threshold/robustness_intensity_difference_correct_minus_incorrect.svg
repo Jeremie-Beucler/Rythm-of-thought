@@ -302,7 +302,7 @@
 </defs>
 <g clip-path='url(#cpNDUuMDR8MTk2LjY0fDUuNDh8MjMuNTE=)'>
 <rect x='45.04' y='5.48' width='151.60' height='18.03' style='stroke-width: 1.07; stroke: none;' />
-<text x='120.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='86.45px' lengthAdjust='spacingAndGlyphs'>original (60/60, &gt; 0)</text>
+<text x='120.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='53.91px' lengthAdjust='spacingAndGlyphs'>Original rule</text>
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHw1NDAuMDA=)'>
 </g>
@@ -313,7 +313,7 @@
 </defs>
 <g clip-path='url(#cpMjExLjA0fDM2Mi42NHw1LjQ4fDIzLjUx)'>
 <rect x='211.04' y='5.48' width='151.60' height='18.03' style='stroke-width: 1.07; stroke: none;' />
-<text x='286.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='69.77px' lengthAdjust='spacingAndGlyphs'>no filtering (&gt; 0)</text>
+<text x='286.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='72.83px' lengthAdjust='spacingAndGlyphs'>No edge filtering</text>
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHw1NDAuMDA=)'>
 </g>
@@ -324,7 +324,7 @@
 </defs>
 <g clip-path='url(#cpMzc3LjA0fDUyOC42NHw1LjQ4fDIzLjUx)'>
 <rect x='377.04' y='5.48' width='151.60' height='18.03' style='stroke-width: 1.07; stroke: none;' />
-<text x='452.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='91.45px' lengthAdjust='spacingAndGlyphs'>aggressive (0/0, &gt; 0)</text>
+<text x='452.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='91.72px' lengthAdjust='spacingAndGlyphs'>Stricter edge filtering</text>
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHw1NDAuMDA=)'>
 </g>
@@ -335,7 +335,7 @@
 </defs>
 <g clip-path='url(#cpNTQzLjA0fDY5NC42NHw1LjQ4fDIzLjUx)'>
 <rect x='543.04' y='5.48' width='151.60' height='18.03' style='stroke-width: 1.07; stroke: none;' />
-<text x='618.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='59.22px' lengthAdjust='spacingAndGlyphs'>activation &gt; 5</text>
+<text x='618.84' y='18.08' text-anchor='middle' style='font-size: 10.00px;fill: #1A1A1A; font-family: "Arial";' textLength='104.25px' lengthAdjust='spacingAndGlyphs'>Activation threshold &gt; 5</text>
 </g>
 <g clip-path='url(#cpMC4wMHw3MjAuMDB8MC4wMHw1NDAuMDA=)'>
 </g>
@@ -446,9 +446,9 @@
 <polyline points='42.30,485.83 45.04,485.83 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
 <polyline points='42.30,454.26 45.04,454.26 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
 <polyline points='42.30,422.68 45.04,422.68 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<text x='369.84' y='532.00' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='105.39px' lengthAdjust='spacingAndGlyphs'>Normalized position</text>
-<text transform='translate(14.08,265.55) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='125.16px' lengthAdjust='spacingAndGlyphs'>Difference in logit score</text>
-<text transform='translate(27.04,265.55) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='107.69px' lengthAdjust='spacingAndGlyphs'>(Correct − Incorrect)</text>
+<text x='369.84' y='532.00' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='69.36px' lengthAdjust='spacingAndGlyphs'>Relative time</text>
+<text transform='translate(14.08,265.55) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='100.47px' lengthAdjust='spacingAndGlyphs'>Intensity difference</text>
+<text transform='translate(27.04,265.55) rotate(-90)' text-anchor='middle' style='font-size: 12.00px; font-family: "Arial";' textLength='153.72px' lengthAdjust='spacingAndGlyphs'>(correct − biased, logit scale)</text>
 </g>
 </g>
 </svg>
